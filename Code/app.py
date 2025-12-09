@@ -15,9 +15,9 @@ STATIC_FOLDER = os.path.join(BASE_DIR, 'static')
 # --- Logic: Detect OS to choose the correct executable ---
 # Windows uses .exe, Mac/Linux does not have an extension
 if platform.system() == 'Windows':
-    executable_name = 'converter.exe'
+    executable_name = '3D_Reconstruction.exe'
 else:
-    executable_name = 'converter'
+    executable_name = '3D_Reconstruction'
 
 C_EXECUTABLE = os.path.join(BASE_DIR, executable_name)
 
@@ -72,15 +72,22 @@ def upload_file():
         return jsonify({'error': 'No file selected'}), 400
 
     unique_id = str(uuid.uuid4())
-    pgm_filename = f"{unique_id}.pgm"
-    pgm_path = os.path.join(STATIC_FOLDER, pgm_filename)
-    obj_filename = f"{unique_id}.obj"
-    obj_path = os.path.join(STATIC_FOLDER, obj_filename)
-
-    # 1. Convert Image to PGM
+    
+    # 1. Convert Image to PGM or PPM
+    # For the full program, we need to check if it's color or grayscale
+    # and save accordingly (PPM for color, PGM for grayscale)
     try:
         img = Image.open(file)
-        img.convert('L').save(pgm_path)
+        
+        # Save as PPM if color, PGM if grayscale
+        if img.mode == 'RGB':
+            image_filename = f"{unique_id}.ppm"
+            image_path = os.path.join(STATIC_FOLDER, image_filename)
+            img.save(image_path, format='PPM')
+        else:
+            image_filename = f"{unique_id}.pgm"
+            image_path = os.path.join(STATIC_FOLDER, image_filename)
+            img.convert('L').save(image_path, format='PPM')
     except Exception as e:
         return jsonify({'error': f'Image conversion failed: {str(e)}'}), 500
 
@@ -96,14 +103,31 @@ def upload_file():
         except Exception:
             pass
 
+    # Run the full C program (it outputs basename_noRoof.obj and basename_withRoof.obj)
+    obj_basename = os.path.join(STATIC_FOLDER, unique_id)
+    
     try:
-        subprocess.run([C_EXECUTABLE, pgm_path, obj_path], check=True)
-    except subprocess.CalledProcessError:
-        return jsonify({'error': 'C program failed to process the image.'}), 500
+        subprocess.run([C_EXECUTABLE, image_path, obj_basename], check=True)
+    except subprocess.CalledProcessError as e:
+        return jsonify({'error': f'C program failed to process the image: {str(e)}'}), 500
+
+    # The C program generates two files
+    obj_filename_noRoof = f"{unique_id}_noRoof.obj"
+    obj_filename_withRoof = f"{unique_id}_withRoof.obj"
+    
+    # Check if both files were created
+    noRoof_path = os.path.join(STATIC_FOLDER, obj_filename_noRoof)
+    withRoof_path = os.path.join(STATIC_FOLDER, obj_filename_withRoof)
+    
+    if not os.path.exists(noRoof_path):
+        return jsonify({'error': 'NoRoof model file was not generated'}), 500
+    if not os.path.exists(withRoof_path):
+        return jsonify({'error': 'WithRoof model file was not generated'}), 500
 
     return jsonify({
         'message': 'Success',
-        'model_url': f'/static/{obj_filename}'
+        'model_url_noRoof': f'/static/{obj_filename_noRoof}',
+        'model_url_withRoof': f'/static/{obj_filename_withRoof}'
     })
 
 if __name__ == '__main__':

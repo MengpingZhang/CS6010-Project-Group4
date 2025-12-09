@@ -44,7 +44,7 @@ def cleanup_old_files():
             continue
             
         # Protect the CSS file and sample images from deletion
-        if filename == 'style.css' or filename.startswith('sample'):
+        if filename == ['style.css', 'app.js'] or filename.startswith('sample'):
             continue
             
         # Check if file is expired

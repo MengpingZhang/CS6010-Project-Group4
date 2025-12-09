@@ -1,95 +1,118 @@
-# CS6010-Project-Group4
+# 3D Building Reconstruction from Floor Plans
 
-## 🏠 Floorplan to 3D Converter
+A web application that converts 2D floor plan images into interactive 3D models using classical computer vision algorithms and C programming.
 
-A lightweight web application that converts 2D floorplan images (JPG/PNG) into interactive 3D OBJ models instantly.
+## Features
 
----
+- Upload floor plan images (PNG, JPG, PGM, PPM)
+- Automatic wall, room, door, and window detection
+- Generate 3D models with and without roofs
+- Interactive 3D visualization with Three.js
+- Sample floor plans for quick testing
+- Georgia Tech themed interface
 
-## ✨ Features
+## Requirements
 
-- **Automatic Conversion**: Uses a C algorithm to detect walls and doors
-- **3D Visualization**: Built-in interactive 3D viewer powered by Three.js
-- **Cross-Platform**: Works on both macOS and Windows
+- **Python 3.7+**
+- **GCC compiler** (for C code)
+- **Flask** and **Pillow**
 
----
+## Installation
 
-## 🚀 Setup Guide
-
-### 1. Prerequisites
-
-- **Python 3.x** installed
-- **GCC Compiler** (pre-installed on macOS/Linux; use MinGW on Windows)
-
-### 2. Compile the C Program (One-time setup)
-
-You must compile the C code before running the app. Open your terminal in the project folder:
-
-**For macOS/Linux:**
+1. Clone the repository:
 
 ```bash
-gcc newextrusion_with_doors1.c -o converter -lm
-chmod +x converter
+git clone https://github.com/MengpingZhang/CS6010-Project-Group4.git
+cd CS6010-Project-Group4/Code
 ```
 
-**For Windows:**
-
-```bash
-gcc newextrusion_with_doors1.c -o converter.exe
-```
-
-### 3. Install Dependencies
-
-Install the required Python libraries:
+2. Install Python dependencies:
 
 ```bash
 pip install flask pillow
 ```
 
----
+3. Compile the C program:
 
-## 🏃 How to Run
-
-1. **Start the Server:**
+**Mac/Linux:**
 
 ```bash
-   python app.py
+gcc -o 3D_Reconstruction 3D_Reconstruction_CSE6010_1.c -lm -fopenmp -O2
 ```
 
-_(Note: Use `python3 app.py` on macOS if `python` doesn't work)_
+**Windows:**
 
-2. **Open Browser:**  
-   Navigate to `http://127.0.0.1:5000`
+```bash
+gcc -o 3D_Reconstruction.exe 3D_Reconstruction_CSE6010_1.c -lm -fopenmp -O2
+```
 
-3. **Generate Your 3D Model:**
-   - Select a floorplan image
-   - Click **Generate 3D Model**
-   - Wait for the model to render
+## Usage
 
----
+1. Start the Flask server:
 
-## 🎮 Controls
+```bash
+python app.py
+```
 
-- **Left Click + Drag**: Rotate view
-- **Right Click + Drag**: Pan camera
-- **Scroll**: Zoom in/out
+2. Open your browser and go to:
 
----
+```
+http://127.0.0.1:8000
+```
 
-## 🛠 Troubleshooting
+3. Upload a floor plan image or click a sample image to generate a 3D model
 
-| Issue                       | Solution                                                                                      |
-| --------------------------- | --------------------------------------------------------------------------------------------- |
-| "Executable not found"      | Ensure `converter` (macOS) or `converter.exe` (Windows) exists in the same folder as `app.py` |
-| "Permission denied" (macOS) | Run `chmod +x converter` in the terminal                                                      |
-| Models appear black         | Ensure scene lighting is active in the code (default uses white material)                     |
+4. Use the toggle buttons to switch between "No Roof" and "With Roof" views
 
----
+5. Interact with the 3D model:
+   - **Left Click + Drag**: Rotate
+   - **Right Click + Drag**: Pan
+   - **Scroll**: Zoom
 
-## 🔧 Built With
+## Project Structure
 
-- **Python Flask** - Backend server
-- **Three.js** - 3D visualization
-- **C** - Floorplan processing algorithm
+```
+Code/
+├── 3D_Reconstruction_CSE6010_1.c    # Main C program
+├── app.py                            # Flask web server
+├── static/
+│   ├── app.js                        # Frontend JavaScript
+│   ├── style.css                     # Styling
+│   └── sample_images/                # Sample floor plans
+└── templates/
+    └── index.html                    # Main HTML page
+```
 
----
+## Algorithm Overview
+
+1. **Image Preprocessing**: Otsu thresholding for wall detection
+2. **Segmentation**: BFS flood fill and connected component labeling
+3. **Door Detection**:
+   - Red pixel detection for door markers
+   - RANSAC-based arc detection for curved doors
+4. **3D Extrusion**: Wall and floor mesh generation
+5. **OBJ Export**: Standard 3D model format
+
+## Technical Details
+
+- **Language**: C (core algorithm), Python (web server), JavaScript (visualization)
+- **Parallelization**: OpenMP for performance optimization
+- **Complexity**: O(N) where N = number of pixels
+- **Output Format**: Wavefront OBJ files
+
+## Team
+
+- Zhang, Mengping
+- Ma, Hsu, Chieh
+- Gao, Tianxiang
+- Nation, Ryan T
+- Imran Aziz
+
+## Course
+
+CSE 6010 - Computational Problem Solving  
+Georgia Institute of Technology
+
+## License
+
+This project is developed for academic purposes.

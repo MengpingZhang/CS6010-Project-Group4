@@ -27,34 +27,26 @@ os.makedirs(SAMPLE_IMAGES_FOLDER, exist_ok=True)
 
 # --- Function: Clean up old files ---
 def cleanup_old_files():
-    """
-    Deletes files in the static folder that are older than 5 minutes.
-    Preserves style.css and sample_images folder.
-    """
     now = time.time()
     expiration_seconds = 300  # 5 minutes
-
+    
     if not os.path.exists(STATIC_FOLDER):
         return
-
+    
     for filename in os.listdir(STATIC_FOLDER):
         file_path = os.path.join(STATIC_FOLDER, filename)
         
         if not os.path.isfile(file_path):
             continue
-            
-        # Protect the CSS file and sample images from deletion
-        if filename == ['style.css', 'app.js'] or filename.startswith('sample'):
-            continue
-            
-        # Check if file is expired
-        try:
-            file_age = now - os.path.getmtime(file_path)
-            if file_age > expiration_seconds:
-                os.remove(file_path)
-                print(f"Cleaned up old file: {filename}")
-        except Exception as e:
-            print(f"Error cleaning file: {e}")
+
+        if filename.endswith(('.obj', '.pgm', '.ppm', '.mtl')):
+            try:
+                file_age = now - os.path.getmtime(file_path)
+                if file_age > expiration_seconds:
+                    os.remove(file_path)
+                    print(f"[CLEANUP] Removed old file: {filename}")
+            except Exception as e:
+                print(f"[ERROR] Cleanup error: {e}")
 
 @app.route('/')
 def index():

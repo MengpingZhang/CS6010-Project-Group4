@@ -3,10 +3,14 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Floorplan to 3D | AI Converter</title>
+    <title>GT Floorplan to 3D | Georgia Tech</title>
+    <link
+      rel="icon"
+      href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🐝</text></svg>"
+    />
 
     <link
-      href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600&display=swap"
+      href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700&display=swap"
       rel="stylesheet"
     />
 
@@ -14,50 +18,79 @@
   </head>
   <body>
     <header>
-      <h1>🏠 Floorplan to 3D</h1>
+      <h1>Floorplan to 3D</h1>
       <p class="subtitle">
-        Transform your 2D blueprints into interactive 3D models instantly.
+        Transform your 2D blueprints into interactive 3D models
       </p>
+      <p class="gt-motto">Progress and Service | Georgia Tech</p>
     </header>
 
-    <div class="main-card">
-      <div class="upload-area">
-        <label for="fileInput" class="custom-file-upload">
-          <span id="fileNameDisplay">📂 Click to Select Floorplan Image</span>
-        </label>
-        <input type="file" id="fileInput" accept="image/*" />
-
-        <button class="generate-btn" onclick="uploadAndRun()" id="runBtn">
-          Generate 3D Model
-        </button>
-        <div id="statusText">Ready to start.</div>
-
-        <!-- Model Toggle Buttons -->
-        <div id="modelControls" style="display: none; margin-top: 10px">
-          <button
-            class="toggle-btn active"
-            onclick="loadModel('noRoof')"
-            id="btnNoRoof"
-          >
-            🏠 No Roof
-          </button>
-          <button
-            class="toggle-btn"
-            onclick="loadModel('withRoof')"
-            id="btnWithRoof"
-          >
-            🏡 With Roof
-          </button>
+    <div class="content-wrapper">
+      <!-- Left Sidebar: Sample Images -->
+      <div class="sidebar">
+        <div class="sidebar-header">
+          <h3>📚 Sample Floorplans</h3>
+          <p>Click to try</p>
+        </div>
+        <div id="sampleImagesContainer" class="sample-images-grid">
+          <!-- Sample images will be loaded here dynamically -->
+          <div class="loading-samples">Loading samples...</div>
         </div>
       </div>
 
-      <div id="container">
-        <div class="spinner" id="loadingSpinner"></div>
-      </div>
+      <!-- Main Content Area -->
+      <div class="main-content">
+        <div class="main-card">
+          <div class="upload-area">
+            <label for="fileInput" class="custom-file-upload">
+              <span id="fileNameDisplay"
+                >📂 Click to Select Floorplan Image</span
+              >
+            </label>
+            <input type="file" id="fileInput" accept="image/*" />
 
-      <div class="instructions">
-        Left Click: Rotate • Right Click: Pan • Scroll: Zoom
+            <button class="generate-btn" onclick="uploadAndRun()" id="runBtn">
+              ⚡ Generate 3D Model
+            </button>
+            <div id="statusText">Ready to start.</div>
+
+            <!-- Model Toggle Buttons -->
+            <div id="modelControls" style="display: none; margin-top: 10px">
+              <button
+                class="toggle-btn active"
+                onclick="loadModel('noRoof')"
+                id="btnNoRoof"
+              >
+                🏠 No Roof
+              </button>
+              <button
+                class="toggle-btn"
+                onclick="loadModel('withRoof')"
+                id="btnWithRoof"
+              >
+                🏡 With Roof
+              </button>
+            </div>
+          </div>
+
+          <div id="container">
+            <div class="spinner" id="loadingSpinner"></div>
+          </div>
+
+          <div class="instructions">
+            🖱️ Left Click: Rotate • Right Click: Pan • Scroll: Zoom
+          </div>
+        </div>
       </div>
+    </div>
+
+    <div class="gt-footer">
+      Built with 💛 at
+      <a href="https://www.gatech.edu" target="_blank"
+        >Georgia Institute of Technology</a
+      >
+      <br />
+      Go Jackets! 🐝 | Together We Swarm 🏈
     </div>
 
     <script type="importmap">

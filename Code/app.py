@@ -2,8 +2,8 @@ import os
 import subprocess
 import uuid
 import time
-import platform  # Used to detect the operating system
-from flask import Flask, request, jsonify, render_template
+import platform
+from flask import Flask, request, jsonify, render_template, send_from_directory
 from PIL import Image
 
 app = Flask(__name__)
@@ -11,9 +11,9 @@ app = Flask(__name__)
 # --- Configuration ---
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 STATIC_FOLDER = os.path.join(BASE_DIR, 'static')
+SAMPLE_IMAGES_FOLDER = os.path.join(STATIC_FOLDER, 'sample_images')
 
 # --- Logic: Detect OS to choose the correct executable ---
-# Windows uses .exe, Mac/Linux does not have an extension
 if platform.system() == 'Windows':
     executable_name = '3D_Reconstruction.exe'
 else:
@@ -21,14 +21,15 @@ else:
 
 C_EXECUTABLE = os.path.join(BASE_DIR, executable_name)
 
-# Ensure static folder exists
+# Ensure folders exist
 os.makedirs(STATIC_FOLDER, exist_ok=True)
+os.makedirs(SAMPLE_IMAGES_FOLDER, exist_ok=True)
 
 # --- Function: Clean up old files ---
 def cleanup_old_files():
     """
     Deletes files in the static folder that are older than 5 minutes.
-    Preserves style.css.
+    Preserves style.css and sample_images folder.
     """
     now = time.time()
     expiration_seconds = 300  # 5 minutes
@@ -42,8 +43,8 @@ def cleanup_old_files():
         if not os.path.isfile(file_path):
             continue
             
-        # Protect the CSS file from deletion
-        if filename == 'style.css':
+        # Protect the CSS file and sample images from deletion
+        if filename == 'style.css' or filename.startswith('sample'):
             continue
             
         # Check if file is expired
@@ -58,6 +59,27 @@ def cleanup_old_files():
 @app.route('/')
 def index():
     return render_template('index.html')
+
+@app.route('/api/sample-images')
+def get_sample_images():
+    """Return list of available sample images"""
+    try:
+        if not os.path.exists(SAMPLE_IMAGES_FOLDER):
+            return jsonify({'samples': []})
+        
+        sample_files = []
+        for filename in os.listdir(SAMPLE_IMAGES_FOLDER):
+            if filename.lower().endswith(('.png', '.jpg', '.jpeg', '.ppm', '.pgm')):
+                sample_files.append({
+                    'name': filename,
+                    'url': f'/static/sample_images/{filename}',
+                    'display_name': filename.replace('_', ' ').replace('.png', '').replace('.jpg', '').title()
+                })
+        
+        return jsonify({'samples': sample_files})
+    except Exception as e:
+        print(f"Error loading sample images: {e}")
+        return jsonify({'samples': []})
 
 @app.route('/upload', methods=['POST'])
 def upload_file():
@@ -74,8 +96,6 @@ def upload_file():
     unique_id = str(uuid.uuid4())
     
     # 1. Convert Image to PGM or PPM
-    # For the full program, we need to check if it's color or grayscale
-    # and save accordingly (PPM for color, PGM for grayscale)
     try:
         img = Image.open(file)
         
@@ -92,7 +112,6 @@ def upload_file():
         return jsonify({'error': f'Image conversion failed: {str(e)}'}), 500
 
     # 2. Run C Program
-    # Check if executable exists
     if not os.path.exists(C_EXECUTABLE):
         return jsonify({'error': f'Executable not found: {executable_name}. Please compile the C code.'}), 500
 
@@ -103,7 +122,6 @@ def upload_file():
         except Exception:
             pass
 
-    # Run the full C program (it outputs basename_noRoof.obj and basename_withRoof.obj)
     obj_basename = os.path.join(STATIC_FOLDER, unique_id)
     
     try:
@@ -111,11 +129,9 @@ def upload_file():
     except subprocess.CalledProcessError as e:
         return jsonify({'error': f'C program failed to process the image: {str(e)}'}), 500
 
-    # The C program generates two files
     obj_filename_noRoof = f"{unique_id}_noRoof.obj"
     obj_filename_withRoof = f"{unique_id}_withRoof.obj"
     
-    # Check if both files were created
     noRoof_path = os.path.join(STATIC_FOLDER, obj_filename_noRoof)
     withRoof_path = os.path.join(STATIC_FOLDER, obj_filename_withRoof)
     
@@ -130,9 +146,73 @@ def upload_file():
         'model_url_withRoof': f'/static/{obj_filename_withRoof}'
     })
 
+@app.route('/upload-sample', methods=['POST'])
+def upload_sample():
+    """Handle sample image selection"""
+    cleanup_old_files()
+    
+    data = request.get_json()
+    if 'sample_url' not in data:
+        return jsonify({'error': 'No sample URL provided'}), 400
+    
+    sample_url = data['sample_url']
+    # Extract filename from URL
+    sample_filename = sample_url.split('/')[-1]
+    sample_path = os.path.join(SAMPLE_IMAGES_FOLDER, sample_filename)
+    
+    if not os.path.exists(sample_path):
+        return jsonify({'error': 'Sample image not found'}), 404
+    
+    unique_id = str(uuid.uuid4())
+    
+    try:
+        img = Image.open(sample_path)
+        
+        # Save as PPM if color, PGM if grayscale
+        if img.mode == 'RGB':
+            image_filename = f"{unique_id}.ppm"
+            image_path = os.path.join(STATIC_FOLDER, image_filename)
+            img.save(image_path, format='PPM')
+        else:
+            image_filename = f"{unique_id}.pgm"
+            image_path = os.path.join(STATIC_FOLDER, image_filename)
+            img.convert('L').save(image_path, format='PPM')
+    except Exception as e:
+        return jsonify({'error': f'Image conversion failed: {str(e)}'}), 500
+    
+    if not os.path.exists(C_EXECUTABLE):
+        return jsonify({'error': f'Executable not found: {executable_name}'}), 500
+    
+    if platform.system() != 'Windows':
+        try:
+            os.chmod(C_EXECUTABLE, 0o755)
+        except Exception:
+            pass
+    
+    obj_basename = os.path.join(STATIC_FOLDER, unique_id)
+    
+    try:
+        subprocess.run([C_EXECUTABLE, image_path, obj_basename], check=True)
+    except subprocess.CalledProcessError as e:
+        return jsonify({'error': f'C program failed: {str(e)}'}), 500
+    
+    obj_filename_noRoof = f"{unique_id}_noRoof.obj"
+    obj_filename_withRoof = f"{unique_id}_withRoof.obj"
+    
+    noRoof_path = os.path.join(STATIC_FOLDER, obj_filename_noRoof)
+    withRoof_path = os.path.join(STATIC_FOLDER, obj_filename_withRoof)
+    
+    if not os.path.exists(noRoof_path) or not os.path.exists(withRoof_path):
+        return jsonify({'error': 'Model files were not generated'}), 500
+    
+    return jsonify({
+        'message': 'Success',
+        'model_url_noRoof': f'/static/{obj_filename_noRoof}',
+        'model_url_withRoof': f'/static/{obj_filename_withRoof}'
+    })
+
 if __name__ == '__main__':
     print(f"Detected System: {platform.system()}")
     print(f"Looking for C executable: {C_EXECUTABLE}")
     print("Starting server... Go to http://127.0.0.1:8000")
-    # host='0.0.0.0' allows access from local network devices
     app.run(debug=True, host='0.0.0.0', port=8000)

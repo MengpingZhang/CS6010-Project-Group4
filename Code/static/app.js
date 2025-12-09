@@ -2,25 +2,17 @@ import * as THREE from "three";
 import { OBJLoader } from "three/addons/loaders/OBJLoader.js";
 import { OrbitControls } from "three/addons/controls/OrbitControls.js";
 
-// ========================================
-// Global Variables
-// ========================================
-let modelUrls = {
-  noRoof: null,
-  withRoof: null,
-};
+let modelUrls = { noRoof: null, withRoof: null };
 let currentModel = "noRoof";
 let scene, camera, renderer, controls, gridHelper;
 
 function initScene() {
   const container = document.getElementById("container");
 
-  // Scene
   scene = new THREE.Scene();
   scene.background = new THREE.Color(0x2a2a3e);
   scene.fog = new THREE.Fog(0x2a2a3e, 500, 2000);
 
-  // Camera
   camera = new THREE.PerspectiveCamera(
     45,
     container.clientWidth / container.clientHeight,
@@ -29,11 +21,7 @@ function initScene() {
   );
   camera.position.set(200, 300, 300);
 
-  // Renderer
-  renderer = new THREE.WebGLRenderer({
-    antialias: true,
-    alpha: true,
-  });
+  renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
   renderer.setSize(container.clientWidth, container.clientHeight);
   renderer.setPixelRatio(window.devicePixelRatio);
   renderer.shadowMap.enabled = true;
@@ -71,10 +59,6 @@ function initScene() {
   const hemisphereLight = new THREE.HemisphereLight(0x8899ff, 0x443322, 0.3);
   scene.add(hemisphereLight);
 
-  if (gridHelper) {
-    scene.remove(gridHelper);
-  }
-
   gridHelper = new THREE.GridHelper(1200, 60, 0x00ff88, 0x444466);
   gridHelper.position.y = -0.5;
   scene.add(gridHelper);
@@ -94,10 +78,7 @@ function initScene() {
   ground.receiveShadow = true;
   scene.add(ground);
 
-  // Start animation loop
   animate();
-
-  // Resize handling
   window.addEventListener("resize", onWindowResize);
 }
 
@@ -143,33 +124,13 @@ function removeOldModels() {
 }
 
 function createModelMaterial() {
-  const materials = {
-    default: new THREE.MeshStandardMaterial({
-      color: 0xf0f0f0,
-      roughness: 0.4,
-      metalness: 0.1,
-      side: THREE.DoubleSide,
-      flatShading: false,
-    }),
-
-    architectural: new THREE.MeshStandardMaterial({
-      color: 0xe8f4f8,
-      roughness: 0.5,
-      metalness: 0.05,
-      side: THREE.DoubleSide,
-      flatShading: false,
-    }),
-
-    warm: new THREE.MeshStandardMaterial({
-      color: 0xfff5e6,
-      roughness: 0.6,
-      metalness: 0.05,
-      side: THREE.DoubleSide,
-      flatShading: false,
-    }),
-  };
-
-  return materials.architectural;
+  return new THREE.MeshStandardMaterial({
+    color: 0xe8f4f8,
+    roughness: 0.5,
+    metalness: 0.05,
+    side: THREE.DoubleSide,
+    flatShading: false,
+  });
 }
 
 function addEdgeLines(object) {
@@ -204,19 +165,16 @@ function displayModel(url, modelType) {
   loader.load(
     url,
     function (object) {
-      // Success callback
       spinner.style.display = "none";
       statusText.innerText = `✨ ${
         modelType === "noRoof" ? "No Roof" : "With Roof"
       } Model Loaded!`;
       statusText.style.color = "#10b981";
 
-      // Center model
       const box = new THREE.Box3().setFromObject(object);
       const center = box.getCenter(new THREE.Vector3());
       object.position.sub(center);
 
-      // Apply material with enhanced visibility
       const material = createModelMaterial();
 
       object.traverse(function (child) {
@@ -229,15 +187,12 @@ function displayModel(url, modelType) {
       });
 
       addEdgeLines(object);
-
       scene.add(object);
       currentModel = modelType;
-
       adjustCameraToModel(object);
     },
     undefined,
     function (error) {
-      // Error callback
       console.error(error);
       statusText.innerText = "❌ Failed to load model.";
       statusText.style.color = "#ef4444";
@@ -252,7 +207,7 @@ function adjustCameraToModel(object) {
   const maxDim = Math.max(size.x, size.y, size.z);
   const fov = camera.fov * (Math.PI / 180);
   let cameraZ = Math.abs(maxDim / 2 / Math.tan(fov / 2));
-  cameraZ *= 1.5; // 添加一些边距
+  cameraZ *= 1.5;
 
   camera.position.set(cameraZ * 0.7, cameraZ * 0.8, cameraZ * 0.7);
   camera.lookAt(0, 0, 0);
@@ -265,7 +220,6 @@ window.loadModel = function (modelType) {
   const url = modelUrls[modelType];
   if (!url) return;
 
-  // Update button states
   document
     .getElementById("btnNoRoof")
     .classList.toggle("active", modelType === "noRoof");
@@ -288,13 +242,9 @@ window.uploadAndRun = async function () {
     return;
   }
 
-  // Cleanup old model
   removeOldModels();
-
-  // Hide model controls
   document.getElementById("modelControls").style.display = "none";
 
-  // UI Loading State
   statusText.innerText = "Processing image & generating 3D model...";
   statusText.style.color = "#4f46e5";
   spinner.style.display = "block";
@@ -305,7 +255,6 @@ window.uploadAndRun = async function () {
   formData.append("file", fileInput.files[0]);
 
   try {
-    // Send to Python backend
     const response = await fetch("/upload", {
       method: "POST",
       body: formData,
@@ -317,37 +266,29 @@ window.uploadAndRun = async function () {
       throw new Error(data.error || "Server Error");
     }
 
-    // Store both model URLs
     modelUrls.noRoof = data.model_url_noRoof;
     modelUrls.withRoof = data.model_url_withRoof;
 
-    // Show model controls
     document.getElementById("modelControls").style.display = "flex";
-
-    // Reset button states
     document.getElementById("btnNoRoof").classList.add("active");
     document.getElementById("btnWithRoof").classList.remove("active");
 
-    // Load the noRoof model first
     statusText.innerText = "Loading No Roof model...";
 
     const loader = new OBJLoader();
     loader.load(
       modelUrls.noRoof,
       function (object) {
-        // Success
         spinner.style.display = "none";
         statusText.innerText = "✨ Model Generated Successfully!";
         statusText.style.color = "#10b981";
         runBtn.disabled = false;
         runBtn.style.opacity = "1";
 
-        // Center model
         const box = new THREE.Box3().setFromObject(object);
         const center = box.getCenter(new THREE.Vector3());
         object.position.sub(center);
 
-        // Material with enhanced visibility
         const material = createModelMaterial();
 
         object.traverse(function (child) {
@@ -360,10 +301,8 @@ window.uploadAndRun = async function () {
         });
 
         addEdgeLines(object);
-
         scene.add(object);
         currentModel = "noRoof";
-
         adjustCameraToModel(object);
       },
       undefined,
@@ -386,7 +325,130 @@ window.uploadAndRun = async function () {
   }
 };
 
+async function loadSampleImages() {
+  const container = document.getElementById("sampleImagesContainer");
+
+  try {
+    const response = await fetch("/api/sample-images");
+    const data = await response.json();
+
+    if (data.samples && data.samples.length > 0) {
+      container.innerHTML = "";
+      data.samples.forEach((sample) => {
+        const card = document.createElement("div");
+        card.className = "sample-image-card";
+        card.onclick = () => handleSampleClick(sample.url);
+
+        card.innerHTML = `
+          <img src="${sample.url}" alt="${sample.display_name}" loading="lazy">
+          <div class="sample-image-name">${sample.display_name}</div>
+        `;
+
+        container.appendChild(card);
+      });
+    } else {
+      container.innerHTML =
+        '<div class="no-samples">No sample images available.<br>Add images to static/sample_images/</div>';
+    }
+  } catch (error) {
+    console.error("Error loading sample images:", error);
+    container.innerHTML =
+      '<div class="no-samples">Failed to load samples</div>';
+  }
+}
+
+async function handleSampleClick(sampleUrl) {
+  const statusText = document.getElementById("statusText");
+  const spinner = document.getElementById("loadingSpinner");
+  const runBtn = document.getElementById("runBtn");
+  const fileDisplay = document.getElementById("fileNameDisplay");
+
+  fileDisplay.innerText = "✅ Sample image selected";
+  fileDisplay.style.color = "#EAAA00";
+
+  removeOldModels();
+  document.getElementById("modelControls").style.display = "none";
+
+  statusText.innerText = "Processing sample image & generating 3D model...";
+  statusText.style.color = "#EAAA00";
+  spinner.style.display = "block";
+  runBtn.disabled = true;
+  runBtn.style.opacity = "0.7";
+
+  try {
+    const response = await fetch("/upload-sample", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ sample_url: sampleUrl }),
+    });
+
+    const data = await response.json();
+
+    if (!response.ok) {
+      throw new Error(data.error || "Server Error");
+    }
+
+    modelUrls.noRoof = data.model_url_noRoof;
+    modelUrls.withRoof = data.model_url_withRoof;
+
+    document.getElementById("modelControls").style.display = "flex";
+    document.getElementById("btnNoRoof").classList.add("active");
+    document.getElementById("btnWithRoof").classList.remove("active");
+
+    statusText.innerText = "Loading No Roof model...";
+
+    const loader = new OBJLoader();
+    loader.load(
+      modelUrls.noRoof,
+      function (object) {
+        spinner.style.display = "none";
+        statusText.innerText = "✨ Sample Model Generated Successfully!";
+        statusText.style.color = "#10b981";
+        runBtn.disabled = false;
+        runBtn.style.opacity = "1";
+
+        const box = new THREE.Box3().setFromObject(object);
+        const center = box.getCenter(new THREE.Vector3());
+        object.position.sub(center);
+
+        const material = createModelMaterial();
+
+        object.traverse(function (child) {
+          if (child.isMesh) {
+            child.material = material;
+            child.geometry.computeVertexNormals();
+            child.castShadow = true;
+            child.receiveShadow = true;
+          }
+        });
+
+        addEdgeLines(object);
+        scene.add(object);
+        currentModel = "noRoof";
+        adjustCameraToModel(object);
+      },
+      undefined,
+      function (error) {
+        console.error(error);
+        statusText.innerText = "❌ Failed to load sample model.";
+        statusText.style.color = "#ef4444";
+        spinner.style.display = "none";
+        runBtn.disabled = false;
+        runBtn.style.opacity = "1";
+      }
+    );
+  } catch (err) {
+    console.error(err);
+    statusText.innerText = "❌ Error: " + err.message;
+    statusText.style.color = "#ef4444";
+    spinner.style.display = "none";
+    runBtn.disabled = false;
+    runBtn.style.opacity = "1";
+  }
+}
+
 document.addEventListener("DOMContentLoaded", function () {
   initScene();
   setupFileInput();
+  loadSampleImages();
 });
